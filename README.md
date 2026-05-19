@@ -2,6 +2,8 @@
 
 This is the ROS2 implementation of the gate vision pipeline. It is intended to be used in a ROS2 environment and should be integrated into a larger ROS2 system.
 
+test_pnp.py is available to test PerspectiveNPoint solution.
+
 ## Dependencies
 
 - vision-pipeline-interfaces: Custom ROS2 interfaces for the gate vision pipeline.
