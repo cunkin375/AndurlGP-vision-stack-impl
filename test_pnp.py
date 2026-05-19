@@ -38,7 +38,7 @@ def square_crop_bounds(box, full_w, full_h, pad=0.20):
     cy2 = int(min(full_h, np.ceil(cy + half)))
     return cx1, cy1, cx2, cy2
 
-def main():
+def main(dataset_dir_override=None):
     device = pick_hardware()
     print(f"Using device: {device}")
 
@@ -48,8 +48,10 @@ def main():
     corners_model_path = base_dir / 'models' / 'best_model.pth'
     camera_info_path = base_dir / 'config' / 'camera_info.yaml'
     
-    # dataset_dir = base_dir.parent / 'yolo-ratm-gate-detection' / 'dataset' / 'images' / 'val'
-    dataset_dir = Path(r"C:\Users\garym\dev\ucf\anduril-gp\yolo-ratm-gate-detection\drone-racing-dataset\autonomous\flight-08a-lemniscate\camera_flight-08a-lemniscate")
+    if dataset_dir_override is not None:
+        dataset_dir = Path(dataset_dir_override)
+    else:
+        dataset_dir = base_dir.parent / 'yolo-ratm-gate-detection' / 'dataset' / 'images' / 'val'
     output_dir = base_dir / 'test_output'
     output_dir.mkdir(exist_ok=True)
 
@@ -169,4 +171,7 @@ def main():
         print(f"Processed {img_path.name} -> {out_path} (PNP: {len(pnp_results)} gates)")
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Test PNP on gate images')
+    parser.add_argument('--dataset_dir', type=str, required=True, help='Path to dataset directory')
+    args = parser.parse_args()
+    main(args.dataset_dir)
