@@ -11,3 +11,6 @@ test_pnp.py is available to test PerspectiveNPoint solution.
   - YOLO model for gate detection.
   - MobileNetV3 model for corner detection.
   - Combined inference script for gate and corner detection.
+
+## Current Blockers
+- PNP is unreliable for gates with less than 4 corners.
