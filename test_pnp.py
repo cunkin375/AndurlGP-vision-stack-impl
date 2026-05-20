@@ -1,4 +1,5 @@
 import os
+import sys
 import cv2
 import numpy as np
 import torch
@@ -38,7 +39,7 @@ def square_crop_bounds(box, full_w, full_h, pad=0.20):
     cy2 = int(min(full_h, np.ceil(cy + half)))
     return cx1, cy1, cx2, cy2
 
-def main(dataset_dir_override=None):
+def main(dataset_dir):
     device = pick_hardware()
     print(f"Using device: {device}")
 
@@ -48,10 +49,6 @@ def main(dataset_dir_override=None):
     corners_model_path = base_dir / 'models' / 'best_model.pth'
     camera_info_path = base_dir / 'config' / 'camera_info.yaml'
     
-    if dataset_dir_override is not None:
-        dataset_dir = Path(dataset_dir_override)
-    else:
-        dataset_dir = base_dir.parent / 'yolo-ratm-gate-detection' / 'dataset' / 'images' / 'val'
     output_dir = base_dir / 'test_output'
     output_dir.mkdir(exist_ok=True)
 
@@ -174,4 +171,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test PNP on gate images')
     parser.add_argument('--dataset_dir', type=str, required=True, help='Path to dataset directory')
     args = parser.parse_args()
-    main(args.dataset_dir)
+    if not args.dataset_dir:
+        print("usage: python test_pnp.py --dataset_dir <path_to_dataset>")
+        sys.exit(-1)
+    main(Path(args.dataset_dir))
