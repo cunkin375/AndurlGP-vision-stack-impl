@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 import cv2
 import numpy as np
 import torch
@@ -51,6 +52,9 @@ def main(dataset_dir):
     
     output_dir = base_dir / 'test_output'
     output_dir.mkdir(exist_ok=True)
+    
+    fails_dir = base_dir / 'test_fails'
+    fails_dir.mkdir(exist_ok=True)
 
     # Load models
     gates_model = YOLO(str(gates_model_path))
@@ -97,6 +101,8 @@ def main(dataset_dir):
                 boxes.append(tuple(map(int, box[:4])))
 
         pnp_results = []
+        passed_to_pnp = False
+        pnp_failure = False
 
         for (x1, y1, x2, y2) in boxes:
             x1, y1 = max(0, x1), max(0, y1)
@@ -132,35 +138,52 @@ def main(dataset_dir):
                 cv2.circle(out, (px, py), 4, corner_bgr.get(c_type, (255, 0, 0)), -1)
 
             # 3. Solve PnP
-            if len(gate_corners) == 4:
-                image_points = np.array([
-                    [gate_corners[0][0], gate_corners[0][1]], # TL
-                    [gate_corners[1][0], gate_corners[1][1]], # TR
-                    [gate_corners[2][0], gate_corners[2][1]], # BL
-                    [gate_corners[3][0], gate_corners[3][1]]  # BR
-                ], dtype=np.float32)
+            if len(gate_corners) >= 3:
+                passed_to_pnp = True
+                
+                obj_pts = []
+                img_pts = []
+                for c_type in range(4):
+                    if c_type in gate_corners:
+                        obj_pts.append(object_points[c_type])
+                        img_pts.append([gate_corners[c_type][0], gate_corners[c_type][1]])
+                
+                obj_pts = np.array(obj_pts, dtype=np.float32)
+                img_pts = np.array(img_pts, dtype=np.float32)
 
-                success, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
+                flags = cv2.SOLVEPNP_ITERATIVE if len(gate_corners) == 4 else cv2.SOLVEPNP_SQPNP
+                success, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, camera_matrix, dist_coeffs, flags=flags)
 
-                if success:
-                    # Draw 3D axes
-                    cv2.drawFrameAxes(out, camera_matrix, dist_coeffs, rvec, tvec, 0.5)
+                if not success:
+                    pnp_failure = True
+                    continue
 
-                    x_c, y_c, z_c = tvec.flatten()
-                    rx, ry, rz = rvec.flatten()
-                    text = f"Pose (Z-fwd): x={x_c:.2f}, y={y_c:.2f}, z={z_c:.2f}"
-                    cv2.putText(out, text, (x1, max(20, y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    
-                    pnp_results.append(
-                        f"Gate Box: ({x1}, {y1}, {x2}, {y2})\n"
-                        f"Translation (x,y,z): {x_c:.4f}, {y_c:.4f}, {z_c:.4f}\n"
-                        f"Rotation vec (rx,ry,rz): {rx:.4f}, {ry:.4f}, {rz:.4f}\n"
-                    )
+                # Draw 3D axes
+                cv2.drawFrameAxes(out, camera_matrix, dist_coeffs, rvec, tvec, 0.5)
 
-        out_path = output_dir / img_path.name
+                x_c, y_c, z_c = tvec.flatten()
+                rx, ry, rz = rvec.flatten()
+                text = f"Pose (Z-fwd): x={x_c:.2f}, y={y_c:.2f}, z={z_c:.2f}"
+                cv2.putText(out, text, (x1, max(20, y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                
+                pnp_results.append(
+                    f"Gate Box: ({x1}, {y1}, {x2}, {y2})\n"
+                    f"Translation (x,y,z): {x_c:.4f}, {y_c:.4f}, {z_c:.4f}\n"
+                    f"Rotation vec (rx,ry,rz): {rx:.4f}, {ry:.4f}, {rz:.4f}\n"
+                )
+
+        if len(boxes) == 0:
+            passed_to_pnp = False
+
+        if not passed_to_pnp or pnp_failure:
+            out_path = fails_dir / img_path.name
+            txt_path = fails_dir / (img_path.stem + ".txt")
+        else:
+            out_path = output_dir / img_path.name
+            txt_path = output_dir / (img_path.stem + ".txt")
+
         cv2.imwrite(str(out_path), out)
         
-        txt_path = output_dir / (img_path.stem + ".txt")
         if pnp_results:
             with open(txt_path, "w") as f:
                 f.write("\n".join(pnp_results))
