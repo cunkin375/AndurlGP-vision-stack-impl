@@ -62,7 +62,7 @@ class GateLocalizationNode(Node):
         
         # 3D World Model
         # markers at (± w/2, ± h/2, 0)
-        w, h = 1.5, 1.5
+        w, h = 2.7, 2.7
         self.object_points = np.array([
             [-w/2, -h/2, 0.0], # 0: TL
             [ w/2, -h/2, 0.0], # 1: TR

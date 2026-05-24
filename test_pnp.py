@@ -66,7 +66,7 @@ def main(dataset_dir):
     # Camera + World 
     camera_matrix, dist_coeffs = load_camera_info(str(camera_info_path))
     
-    w, h = 1.5, 1.5
+    w, h = 2.7, 2.7
     object_points = np.array([
         [-w/2, -h/2, 0.0], # TL
         [ w/2, -h/2, 0.0], # TR
